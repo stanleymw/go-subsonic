@@ -61,6 +61,39 @@ func (s *Client) Stream(id string, parameters map[string]string) (io.ReadCloser,
 	return response.Body, nil
 }
 
+func (s *Client) StreamRange(id string, parameters map[string]string, startByte int64, endByte int64) (io.ReadCloser, error) {
+	params := url.Values{}
+	params.Add("id", id)
+	for k, v := range parameters {
+		params.Add(k, v)
+	}
+	response, err := s.RequestWithRange("GET", "stream", params, startByte, endByte)
+	if err != nil {
+		return nil, err
+	}
+	contentType := response.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "text/xml") || strings.HasPrefix(contentType, "application/xml") {
+		// An error was returned
+		defer response.Body.Close()
+		responseBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+		resp := Response{}
+		err = xml.Unmarshal(responseBody, &resp)
+		if err != nil {
+			return nil, err
+		}
+		if resp.Error != nil {
+			err = fmt.Errorf("Error #%d: %s\n", resp.Error.Code, resp.Error.Message)
+		} else {
+			err = fmt.Errorf("An error occurred: %#v\n", resp)
+		}
+		return nil, err
+	}
+	return response.Body, nil
+}
+
 // GetStreamURL returns the URL for streaming the specified media. Similar to Stream,
 // except it does not actually perform the HTTP request. Useful when the streaming
 // will be handled by an outside program, e.g. mpv.

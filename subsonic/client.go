@@ -111,6 +111,22 @@ func (s *Client) Request(method string, endpoint string, params url.Values) (*ht
 	return resp, nil
 }
 
+func (s *Client) RequestWithRange(method string, endpoint string, params url.Values, start int64, end int64) (*http.Response, error) {
+	req, err := s.setupRequest(method, endpoint, params)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Range",
+		fmt.Sprintf("bytes=%d-%d", start, end))
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // Get is a convenience interface to issue a GET request and parse the response body (99% of Subsonic API calls)
 func (s *Client) Get(endpoint string, params map[string]string) (*Response, error) {
 	parameters := url.Values{}
